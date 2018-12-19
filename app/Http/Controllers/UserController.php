@@ -56,12 +56,13 @@ class UserController extends Controller
             return $ret;
         }
 
+        $time = time();
         $token = md5(md5(uniqid(mt_rand(), true).time()));
         $user_info = $this->UserModel->get_user_info(['openid' => $openid]);
         if (!$user_info)
         {
             // 创建用户
-            $arr = ['openid' => $openid, 'name' => $name,
+            $arr = ['update_time' => $time, 'openid' => $openid, 'name' => $name,
                 'head_portrait' => $head, 'grade' => 1, 'token' => $token];
             $this->UserModel->insert_user_info($arr);
             // 默认给阵容一个乞丐
@@ -85,8 +86,6 @@ class UserController extends Controller
             $where['openid'] = $openid;
             $arr = ['name' => $name, 'head_portrait' => $head, 'token' => $token];
             $this->UserModel->update_data($where, $arr);
-
-            // 离线收益
         }
 
         // 记录邀请者
