@@ -53,8 +53,8 @@ Route::group(['middleware' => 'CrossHttpMiddleware'], function()
     // 添加钻石
     // Route::post('diamond', 'TurntableController@add_diamond');
 
-    // 添加金币
-    // Route::post('gold', 'TurntableController@add_gold');
+    // 分享加金币 http://king.com/api/gold {id}
+    Route::post('gold', 'UserController@add_gold');
 
     // 购买角色 http://king.com/api/buy_role {id, grade:等级, money:钱的类型 gold or diamond}
     Route::post('buy_role', 'StoreController@buy_role');

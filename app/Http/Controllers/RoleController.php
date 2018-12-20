@@ -102,7 +102,6 @@ class RoleController extends Controller
             return $result;
         }
 
-        // 验证当前位置的信息是否真实
         $grade = 0;
         $role_obj = $this->ArrayModel->get_role_location(['id' => $id, 'location' => $current_position]);
         $role_arr = $this->CustomPage->objectToArray($role_obj);
@@ -132,80 +131,16 @@ class RoleController extends Controller
         if (!empty($role_arr))
         {
             // 目标位置有角色
-            // 判断是合并还是交换位置
-            if ($role_arr['grade'] != $grade)
+            $ret = $this->interchange_or_merge($id, $current_position, $target_location, $grade, $role_arr['grade']);
+            if ($ret)
             {
-                $where = ['id' => $id, 'location' => $current_position];
-                $arr = ['id' => $id, 'location' => $target_location];
-                $this->ArrayModel->update_data($where, $arr);
-
-                $where = ['id' => $id, 'location' => $target_location, 'grade' => $role_arr['grade']];
-                $arr = ['id' => $id, 'location' => $current_position];
-                $this->ArrayModel->update_data($where, $arr);
+                $result['array'] = $ret;
             }
             else
             {
-                // 合并 判断是否刷新等级
-                $ret = $this->ArrayModel->del_array_info(['id' => $id, 'location' => $current_position]);
-                if ($ret)
-                {
-                    $role_obj = $this->RoleModel->get_role_info(['grade' => $role_arr['grade']]);
-                    $role_arr = $this->CustomPage->objectToArray($role_obj);
-                    if (!empty($role_arr))
-                    {
-                        $fid = $role_arr['fid'];
-                        $user_info = $this->UserModel->get_user_info(['id'=>$id]);
-                        $user_arr = $this->CustomPage->objectToArray($user_info);
-                        if (!empty($user_arr))
-                        {
-                            // 金币产出更新结算
-                            $now_time = time();
-                            $out_gold = ($now_time - $user_arr['update_time']) * $user_arr['output'];
-                            $where_gold['id'] = $id;
-                            $filed = 'gold';
-                            $this->UserModel->increment_data($where_gold, $filed, $out_gold);
-                            $filed_time = ['update_time' => $now_time];
-                            $this->UserModel->update_data($where_gold, $filed_time);
-                            
-                            if ($fid > $user_arr['grade'])
-                            {
-                                // 更新段位
-                                $where_user['id'] = $id;
-                                $arr_user = ['grade' => $fid];
-                                $this->UserModel->update_data($where_user, $arr_user);
-                                // 更新商店
-                                $basics_gold = $role_arr['basics_gold'];
-                                $basics_diamond = $role_arr['basics_diamond'];
-                                $role_info = ['id' => $id, 'grade' => $fid, 'gold' => $basics_gold, 'diamond' => $basics_diamond];
-                                $this->StoreModel->insert_store_info($role_info);
-                            }
-
-                            $role_obj_2 = $this->RoleModel->get_role_info(['grade' => $fid]);
-                            $role_arr_2 = $this->CustomPage->objectToArray($role_obj_2);
-                            if (!empty($role_arr_2))
-                            {
-                                $where = ['id' => $id, 'location' => $target_location];
-                                $arr = ['grade' => $fid, 'output' => $role_arr_2['output']];
-                                $this->ArrayModel->update_data($where, $arr);
-                            }
-
-                            $output_money = 0;
-                            $array_obj = $this->ArrayModel->get_array_info(['id' => $id]);
-                            $ret_val = $this->CustomPage->objectToArray($array_obj->toArray());
-                            if (!empty($ret_val))
-                            {
-                                foreach ($ret_val as $key => $val)
-                                {
-                                    $output_money += $val['output'];
-                                }
-                            }
-
-                            $where_id['id'] = $id;
-                            $arr_out = ['output' => $output_money];
-                            $this->UserModel->update_data($where_id, $arr_out);
-                        }
-                    }
-                }
+                $result['flag'] = -1;
+                $result['data'] = 'system error!';
+                return $result;
             }
         }
         else 
@@ -213,12 +148,24 @@ class RoleController extends Controller
             // 目标位置为空 直接替换位置
             $where = ['id' => $id, 'location' => $current_position];
             $arr = ['id' => $id, 'location' => $target_location];
-            $this->ArrayModel->update_data($where, $arr);
-        }
+            $ret = $this->ArrayModel->update_data($where, $arr);
+            if (!$ret)
+            {
+                return false;
+            }
 
-        // 阵容
-        $array_obj = $this->ArrayModel->get_array_info(['id' => $id]);
-        $result['array'] = $this->CustomPage->objectToArray($array_obj->toArray());
+            $ret = $this->location_replace($id, $current_position, $target_location);
+            if ($ret)
+            {
+                $result['array'] = $ret;
+            }
+            else
+            {
+                $result['flag'] = -1;
+                $result['data'] = 'system error!';
+                return $result;
+            }
+        }
 
         $obj = $this->UserModel->get_user_info(['id' => $id]);
         $user_arr = $this->CustomPage->objectToArray($obj);
@@ -237,5 +184,217 @@ class RoleController extends Controller
         }
 
         return $result;
+    }
+
+    private function get_role_array_info($id, $location)
+    {
+        $arr = $this->ArrayModel->get_role_location(['id' => $id, 'location' => $location]);
+        if ($arr)
+        {
+            return $arr;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    private function interchange_or_merge($id, $current_position, $target_location, $cur_grade, $tar_grade)
+    {
+        // 判断是合并还是交换位置
+        if ($tar_grade != $cur_grade)
+        {
+            // 交换位置
+            $ret = $this->interchange($id, $current_position, $target_location, $tar_grade);
+            if ($ret)
+            {
+                return $ret;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            // 合并 判断是否刷新等级
+            $ret = $this->role_merge($id, $current_position, $target_location, $tar_grade);
+            if ($ret)
+            {
+                $ret = $this->location_replace($id, $current_position, $target_location);
+                if ($ret)
+                {
+                    return $ret;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+    }
+
+    private function location_replace($id, $current_position, $target_location)
+    {
+        // 拼接数据给前端
+        $tar_arr = $this->ArrayModel->get_role_location(['id' => $id, 'location' => $target_location]);
+        if ($tar_arr)
+        {
+            $wz1['location'] = $current_position;
+            $wz1['grade'] = 0;
+            $wz1['output'] = 0;
+            $array[] = $wz1;
+            $array[] = $tar_arr;
+
+            return $array;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    private function interchange($id, $current_position, $target_location, $tar_grade)
+    {
+        $where = ['id' => $id, 'location' => $current_position];
+        $arr = ['id' => $id, 'location' => $target_location];
+        $ret = $this->ArrayModel->update_data($where, $arr);
+        if (!$ret)
+        {
+            return false;
+        }
+
+        $where = ['id' => $id, 'location' => $target_location, 'grade' => $tar_grade];
+        $arr = ['id' => $id, 'location' => $current_position];
+        $ret = $this->ArrayModel->update_data($where, $arr);
+        if (!$ret)
+        {
+            return false;
+        }
+
+        $array = [];
+        $ret1_arr = $this->ArrayModel->get_role_location(['id' => $id, 'location' => $current_position]);
+        if ($ret1_arr)
+        {
+            $array[] = $ret1_arr;
+        }
+        else
+        {
+            return false;
+        }
+
+        $ret2_arr = $this->ArrayModel->get_role_location(['id' => $id, 'location' => $target_location]);
+        if ($ret2_arr)
+        {
+            $array[] = $ret2_arr;
+        }
+        else
+        {
+            return false;
+        }
+
+        return $array;
+    }
+
+    private function role_merge($id, $current_position, $target_location, $tar_grade)
+    {
+        // 得到上一级角色
+        $role_obj = $this->RoleModel->get_role_info(['grade' => $tar_grade]);
+        $role_arr = $this->CustomPage->objectToArray($role_obj);
+        if (empty($role_arr))
+        {
+            return false;
+        }
+
+        $fid = $role_arr['fid'];
+        // 判断上级是否存在
+        $role_obj_2 = $this->RoleModel->get_role_info(['grade' => $fid]);
+        $role_arr_2 = $this->CustomPage->objectToArray($role_obj_2);
+        if (empty($role_arr_2))
+        {
+            return false;
+        }
+
+        $user_info = $this->UserModel->get_user_info(['id'=>$id]);
+        $user_arr = $this->CustomPage->objectToArray($user_info);
+        if (empty($user_arr))
+        {
+            return false;
+        }
+
+        // 删除当前位置角色
+        $ret = $this->ArrayModel->del_array_info(['id' => $id, 'location' => $current_position]);
+        if (!$ret)
+        {
+            return false;
+        }
+
+        // 金币产出更新结算
+        $now_time = time();
+        $out_gold = ($now_time - $user_arr['update_time']) * $user_arr['output'];
+        $where_gold['id'] = $id;
+        $filed = 'gold';
+        $ret = $this->UserModel->increment_data($where_gold, $filed, $out_gold);
+        if (!$ret)
+        {
+            return false;
+        }
+
+        $filed_time = ['update_time' => $now_time];
+        $ret = $this->UserModel->update_data($where_gold, $filed_time);
+        if (!$ret)
+        {
+            return false;
+        }
+        
+        if ($fid > $user_arr['grade'])
+        {
+            // 更新段位和每秒产出
+            $output_money = 0;
+            $array_obj = $this->ArrayModel->get_array_info(['id' => $id]);
+            $ret_val = $this->CustomPage->objectToArray($array_obj->toArray());
+            if (!empty($ret_val))
+            {
+                foreach ($ret_val as $key => $val)
+                {
+                    $output_money += $val['output'];
+                }
+            }
+            else
+            {
+                return false;
+            }
+
+            $where_user['id'] = $id;
+            $arr_user = ['grade' => $fid, 'output' => $output_money];
+            $ret = $this->UserModel->update_data($where_user, $arr_user);
+            if (!$ret)
+            {
+                return false;
+            }
+            // 更新商店
+            $basics_gold = $role_arr_2['basics_gold'];
+            $basics_diamond = $role_arr_2['basics_diamond'];
+            $role_info = ['id' => $id, 'grade' => $fid, 'gold' => $basics_gold, 'diamond' => $basics_diamond];
+            $ret = $this->StoreModel->insert_store_info($role_info);
+            if (!$ret)
+            {
+                return false;
+            }
+        }
+
+        $where = ['id' => $id, 'location' => $target_location];
+        $arr = ['grade' => $fid, 'output' => $role_arr_2['output']];
+        $ret = $this->ArrayModel->update_data($where, $arr);
+        if (!$ret)
+        {
+            return false;
+        }
+
+        return true;
     }
 }

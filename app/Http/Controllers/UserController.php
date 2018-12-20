@@ -179,7 +179,6 @@ class UserController extends Controller
         $user_arr = $this->CustomPage->objectToArray($obj);
         if (!empty($user_arr))
         {
-            // 金币要做单位换算
             $result['gold'] = $user_arr['gold'];
             $result['grade'] = $user_arr['grade'];
 
@@ -640,6 +639,57 @@ class UserController extends Controller
                 $result['flag'] = -1;
             }
 
+        }
+
+        return $result;
+    }
+
+    /* 分享加金币 */
+    public function add_gold(Request $request)
+    {
+        $id = $request->input('id');
+        $ret = $this->check_param($id, "id");
+        if ($ret)
+        {
+            return $ret;
+        }
+
+        // 加金币
+        $result['flag'] = -1;
+        $obj = $this->UserModel->get_user_info(['id'=>$id]);
+        $user_arr = $this->CustomPage->objectToArray($obj);
+        if (empty($user_arr))
+        {
+            $result['data'] = "The user does not exist!";
+        }
+        else
+        {
+            $gold = 0;
+            $ret1 = $this->StoreModel->get_role_info(['id' => $id, 'grade' => $user_arr['grade']]);
+            $arr = $this->CustomPage->objectToArray($ret1);
+            if(!empty($arr))
+            {
+                $gold = $arr['gold'];
+            }
+            else
+            {
+                $result['data'] = 'system get role info error!';
+                return $result;
+            }
+
+            $where['id'] = $id;
+            $filed = 'gold';
+            $ret = $this->UserModel->increment_data($where, $filed, $gold);
+            if ($ret)
+            {
+                // 返回加了多少金币
+                $result['gold'] = $gold;
+                $result['flag'] = 0;
+            }
+            else
+            {
+                $result['data'] = 'system error!';
+            }
         }
 
         return $result;

@@ -66,7 +66,7 @@ class ArrayModel
         try
         {
             $tab_ticket = \DB::table('king_array');
-            $ret_value = $tab_ticket->where($where)->select('location', 'grade')->first();
+            $ret_value = $tab_ticket->where($where)->select('location', 'grade', 'output')->first();
             return $ret_value;
         } catch (\Exception $exception) {
             return false;
