@@ -25,6 +25,24 @@ class TurntableController extends Controller
         $this->CustomPage = new CustomPage();
     }
 
+    public function get_date_diff($start_time,$end_time='')
+    {
+        $end_time = ($end_time=='')?date("Y-m-d"):$end_time;
+        $datetime1 = new \DateTime($start_time);
+        $datetime2 = new \DateTime($end_time);
+        $interval = $datetime1->diff($datetime2);
+        $time = $interval->format('%d');
+        return $time;
+    }
+
+    public function test()
+    {
+        // $today = date("Y-m-d H:i:s");
+        // $today = date("Y-m-d");
+        // $result['date'] = $this->get_date_diff('2018-12-19 20:01:56');
+        $result['date'] = $this->get_date_diff('2018-12-19');
+        return $result;
+    }
     // 1.验证用户数据（是否有券）
     public function get_user_ticket($id)
     {
@@ -48,18 +66,18 @@ class TurntableController extends Controller
             $result['flag'] = -1;
             return $result;
         }
-        
+
         $result['ticket'] = $this->get_user_ticket($id);
         return $result;
     }
-    
+
     /* 2、抽奖 */
     // 流程：1.拼装奖项数组，2.计算概率，3.返回中奖情况
     public function get_gift(Request $request)
     {
         $id = $request->input('id');
         // 验签
-        
+
         // 验证   
         if (empty($id) || !is_numeric($id))
         {
@@ -67,7 +85,7 @@ class TurntableController extends Controller
             $result['flag'] = -1;
             return $result;
         }
-        
+
         // 1.验证用户数据（是否有券）
         if (!$this->get_user_ticket($id))
         {
@@ -133,7 +151,7 @@ class TurntableController extends Controller
             // $this->update_luck($id, $num);
             $result['type'] = 3;
         }
-        
+
         $result['id'] = $rid - 1;
 
         return $result;
@@ -256,7 +274,7 @@ class TurntableController extends Controller
     {
 /*
         // 验签
-        
+
         // 验证   
         $id = $request->input('id');
         if (empty($id) || !is_numeric($id))
@@ -307,7 +325,7 @@ class TurntableController extends Controller
     private function add_gold($id, $gold)
     {
         // 验签
-        
+
 /*
         // 验证   
         $id = $request->input('id');

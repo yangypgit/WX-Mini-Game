@@ -27,6 +27,17 @@ class UserController extends Controller
         $this->InvitationListModel = InvitationListModel::getInstance();
     }
 
+    private function get_date_diff($start_time, $end_time='')
+    {
+        $end_time = ($end_time == '') ? date("Y-m-d") : $end_time;
+        $datetime1 = new \DateTime($start_time);
+        $datetime2 = new \DateTime($end_time);
+        $interval = $datetime1->diff($datetime2);
+        $time = $interval->format('%d');
+
+        return $time;
+    }
+
     /* 登录 */
     public function login(Request $request)
     {
@@ -79,6 +90,9 @@ class UserController extends Controller
             // 初始化商店
             $store_arr = ['id' => $id, 'grade' => 1, 'gold' => $role_arr['output']];
             $this->StoreModel->insert_store_info($store_arr);
+            // 初始化签到表
+            $data = ['id' => $id, 'day' => 0, 'today' => date("Y-m-d")];
+            $ret = $this->CheckInTableModel->insert_info($data);
         }
         else
         {
@@ -160,6 +174,34 @@ class UserController extends Controller
         $array_obj = $this->ArrayModel->get_array_info(['id' => $id]);
         // $array_arr = $this->CustomPage->objectToArray($array_obj);
         $result['array'] = $this->CustomPage->objectToArray($array_obj->toArray());
+        // 是否签到
+        $check_info = $this->CheckInTableModel->get_check_info(['id' => $id]);
+        $check = $this->CustomPage->objectToArray($check_info);
+        if (empty($check))
+        {
+            $result['data'] = 'Check the sign in error!';
+            $result['flag'] = -1;
+            return $result;
+        }
+
+        $ret = $this->get_date_diff($check['today']);
+        if ($ret > 0)
+        {
+            // on-off 置零
+            $where['id'] = $id;
+            $ret = $this->CheckInTableModel->update_data($where, ['on-off' => 0]);
+            if (!$ret)
+            {
+                $result['data'] = 'Set the sign in on-off error!';
+                $result['flag'] = -1;
+                return $result;
+            }
+            $result['type'] = 0;
+        }
+        else
+        {
+            $result['type'] = $check['on-off'];
+        }
         
         return $result;
     }
@@ -448,7 +490,7 @@ class UserController extends Controller
         else
         {
             // 没有签到信息
-            $data = ['id' => $id, 'day' => 0];
+            $data = ['id' => $id, 'day' => 0, 'today' => date("Y-m-d")];
             $ret = $this->CheckInTableModel->insert_info($data);
             if ($ret)
             {
@@ -482,13 +524,21 @@ class UserController extends Controller
         $result['flag'] = -1;
         $check_info = $this->CheckInTableModel->get_check_info(['id' => $id]);
         $check = $this->CustomPage->objectToArray($check_info);
-        if (!empty($check))
+        if (empty($check))
+        {
+            $result['flag'] = -1;
+            $result['data'] = 'Please first daily_bonus!';
+            return $result;
+        }
+
+        if ($check['on-off'] == 0)
         {
             $day = (($check['day'] + 1) % 7 != 0) ? (($check['day'] + 1) % 7) : 7;
 
             $where['id'] = $id;
             $filed = 'day';
-            $this->CheckInTableModel->increment_data($where, $filed, 1);
+            $this->CheckInTableModel->increment_data($where, 'day', 1);
+            $this->CheckInTableModel->update_data($where, ['on-off' => 1]);
 
             $result['day'] = $day;
             $result['flag'] = 0;
@@ -496,7 +546,8 @@ class UserController extends Controller
         else
         {
             $result['flag'] = -1;
-            $result['data'] = 'Please first daily_bonus!';
+            $result['data'] = 'You have signed in today!';
+            return $result;
         }
 
         $bonus_info = $this->CheckInTableModel->get_daily_bonus(['day' => $day]);
