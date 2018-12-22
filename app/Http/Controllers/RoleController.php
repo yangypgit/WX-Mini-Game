@@ -333,7 +333,7 @@ class RoleController extends Controller
             return false;
         }
 
-        // 金币产出更新结算
+        // 金币每秒产出更新 结算
         $now_time = time();
         $out_gold = ($now_time - $user_arr['update_time']) * $user_arr['output'];
         $where_gold['id'] = $id;
@@ -344,7 +344,22 @@ class RoleController extends Controller
             return false;
         }
 
-        $filed_time = ['update_time' => $now_time];
+        $output_money = 0;
+        $array_obj = $this->ArrayModel->get_array_info(['id' => $id]);
+        $ret_val = $this->CustomPage->objectToArray($array_obj->toArray());
+        if (!empty($ret_val))
+        {
+            foreach ($ret_val as $key => $val)
+            {
+                $output_money += $val['output'];
+            }
+        }
+        else
+        {
+            return false;
+        }
+
+        $filed_time = ['update_time' => $now_time, 'output' => $output_money];
         $ret = $this->UserModel->update_data($where_gold, $filed_time);
         if (!$ret)
         {
@@ -354,23 +369,8 @@ class RoleController extends Controller
         if ($fid > $user_arr['grade'])
         {
             // 更新段位和每秒产出
-            $output_money = 0;
-            $array_obj = $this->ArrayModel->get_array_info(['id' => $id]);
-            $ret_val = $this->CustomPage->objectToArray($array_obj->toArray());
-            if (!empty($ret_val))
-            {
-                foreach ($ret_val as $key => $val)
-                {
-                    $output_money += $val['output'];
-                }
-            }
-            else
-            {
-                return false;
-            }
-
             $where_user['id'] = $id;
-            $arr_user = ['grade' => $fid, 'output' => $output_money];
+            $arr_user = ['grade' => $fid];
             $ret = $this->UserModel->update_data($where_user, $arr_user);
             if (!$ret)
             {

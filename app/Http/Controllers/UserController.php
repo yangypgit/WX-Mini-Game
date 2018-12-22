@@ -74,7 +74,7 @@ class UserController extends Controller
         {
             // 创建用户
             $arr = ['update_time' => $time, 'openid' => $openid, 'name' => $name,
-                'head_portrait' => $head, 'grade' => 1, 'token' => $token];
+                'head_portrait' => $head, 'grade' => 1, 'token' => $token, 'output' => 1.5];
             $this->UserModel->insert_user_info($arr);
             // 默认给阵容一个乞丐
             $obj = $this->UserModel->get_user_info(['openid' => $openid]);
@@ -88,7 +88,7 @@ class UserController extends Controller
                 $this->ArrayModel->insert_array_info($array_arr);
             }
             // 初始化商店
-            $store_arr = ['id' => $id, 'grade' => 1, 'gold' => $role_arr['output']];
+            $store_arr = ['id' => $id, 'grade' => 1, 'gold' => $role_arr['basics_gold'], 'diamond' => $role_arr['basics_diamond']];
             $this->StoreModel->insert_store_info($store_arr);
             // 初始化签到表
             $data = ['id' => $id, 'day' => 0, 'today' => date("Y-m-d")];
