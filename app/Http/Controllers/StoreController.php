@@ -107,7 +107,7 @@ class StoreController extends Controller
                 return $result;
             }
 
-            if ($user_arr['gold'] - $store_arr['gold'] > 0)
+            if ($user_arr['gold'] - $store_arr['gold'] >= 0)
             {
                 // 扣费 
                 $where['id'] = $id;
@@ -140,7 +140,7 @@ class StoreController extends Controller
                 return $result;
             }
 
-            if ($user_arr['diamond'] - $store_arr['diamond'] > 0)
+            if ($user_arr['diamond'] - $store_arr['diamond'] >= 0)
             {
                 // 扣费 
                 $where['id'] = $id;
@@ -296,7 +296,7 @@ class StoreController extends Controller
             }
         }
 
-        if ($user_arr['gold'] - $now_gold > 0)
+        if ($user_arr['gold'] - $now_gold >= 0)
         {
             // 扣费 
             $where['id'] = $id;

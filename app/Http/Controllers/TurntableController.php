@@ -429,9 +429,16 @@ class TurntableController extends Controller
         }
 
         // 更新翻倍
-        $this->update_luck($id, $box);
+        $ret = $this->update_luck($id, $box);
+        if ($ret)
+        {
+            $result['flag'] = 0;
+        }
+        else
+        {
+            $result['flag'] = -1;
+        }
 
-        $result['flag'] = 0;
         return $result;
     }
 }

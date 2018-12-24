@@ -27,6 +27,18 @@ class UserController extends Controller
         $this->InvitationListModel = InvitationListModel::getInstance();
     }
 
+    public function test()
+    {
+            // 初始化签到表
+            $data = ['id' => 25, 'day' => 0, 'today' => date("Y-m-d")];
+            $ret = $this->CheckInTableModel->insert_info($data);
+            if (!$ret)
+            {
+                $result['data'] = 'Initializes the check-in table error!';
+                return $result;
+            }
+    }
+
     private function get_date_diff($start_time, $end_time='')
     {
         $end_time = ($end_time == '') ? date("Y-m-d") : $end_time;
@@ -93,6 +105,11 @@ class UserController extends Controller
             // 初始化签到表
             $data = ['id' => $id, 'day' => 0, 'today' => date("Y-m-d")];
             $ret = $this->CheckInTableModel->insert_info($data);
+            if (!$ret)
+            {
+                $result['data'] = 'Initializes the check-in table error!';
+                return $result;
+            }
         }
         else
         {
@@ -632,6 +649,11 @@ class UserController extends Controller
         if (!empty($arr))
         {
             $result['array'] = $arr;
+            $result['flag'] = 0;
+        }
+        else
+        {
+            $result['array'] = [];
             $result['flag'] = 0;
         }
 

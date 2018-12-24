@@ -135,6 +135,7 @@ class RoleController extends Controller
             if ($ret)
             {
                 $result['array'] = $ret;
+                $result['type'] = 1;
             }
             else
             {
@@ -158,6 +159,7 @@ class RoleController extends Controller
             if ($ret)
             {
                 $result['array'] = $ret;
+                $result['type'] = 2;
             }
             else
             {
@@ -244,9 +246,9 @@ class RoleController extends Controller
         $tar_arr = $this->ArrayModel->get_role_location(['id' => $id, 'location' => $target_location]);
         if ($tar_arr)
         {
-            $wz1['location'] = $current_position;
+            $wz1['location'] = (int)$current_position;
             $wz1['grade'] = 0;
-            $wz1['output'] = 0;
+            $wz1['output'] = '0';
             $array[] = $wz1;
             $array[] = $tar_arr;
 
